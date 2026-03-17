@@ -78,7 +78,7 @@
 
 <script>
 const CLIENT_ID    = '095aac83519d4b01ba2bc74fefb3d68f';
-const REDIRECT_URI = 'https://arihub-coder.github.io/pitchfork-gallery/pitchfork-selects.html';
+const REDIRECT_URI = 'https://arihub-coder.github.io/pitchfork-gallery/pitchfork-selects.html'; // updated
 const PLAYLIST_ID  = '7f9o34JAe8ZSRq4GX7f0Ol';
 const START_DATE   = new Date('2025-01-01');
 
@@ -233,8 +233,7 @@ async function init(token) {
       err.textContent = 'Auth error: ' + e.message;
     }
   } else {
-    const stored = localStorage.getItem('sp_token');
-    if (stored) { init(stored); }
+    // Never auto-login - always show connect button
   }
 })();
 </script>
