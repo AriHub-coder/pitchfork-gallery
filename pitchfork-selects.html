@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pitchfork Selects — Artwork Archive</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --fg: #f0ede6;
+    --muted: #5a5a5a;
+    --accent: #c8f050;
+    --font-serif: 'Libre Baskerville', Georgia, serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    height: 100%;
+    overflow: hidden;
+  }
+
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 32px;
+  }
+
+  .logo {
+    font-family: var(--font-serif);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--fg);
+    opacity: 0.5;
+  }
+
+  .counter {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .feed {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .card.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .card-inner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 52px;
+    align-items: end;
+    max-width: 920px;
+    width: 100%;
+    padding: 80px 32px;
+  }
+
+  .cover {
+    width: clamp(260px, 36vw, 440px);
+    height: clamp(260px, 36vw, 440px);
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+  }
+
+  .cover-placeholder {
+    width: clamp(260px, 36vw, 440px);
+    height: clamp(260px, 36vw, 440px);
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  .info { padding-bottom: 8px; }
+
+  .date-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .track-title {
+    font-family: var(--font-serif);
+    font-size: clamp(20px, 2.8vw, 34px);
+    line-height: 1.15;
+    font-weight: normal;
+    margin-bottom: 6px;
+    color: var(--fg);
+  }
+
+  .track-artist {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(15px, 1.8vw, 21px);
+    color: var(--fg);
+    opacity: 0.6;
+    margin-bottom: 28px;
+  }
+
+  .source-tag {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .album-name {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .release-year {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  nav {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    z-index: 100;
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid #2a2a2a;
+    color: var(--fg);
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s;
+    font-size: 16px;
+  }
+
+  .nav-btn:hover { border-color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.2; cursor: default; }
+
+  .nav-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--muted);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .dot.active { background: var(--accent); transform: scale(1.5); }
+
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+  }
+
+  .loading-text {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  #error-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 150;
+  }
+
+  .error-msg {
+    font-size: 12px;
+    color: #c05050;
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.7;
+    font-family: var(--font-mono);
+  }
+
+  .keyboard-hint {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    font-size: 9px;
+    color: #2a2a2a;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <p class="loading-text">Loading artwork archive...</p>
+</div>
+
+<div id="error-screen">
+  <p class="logo" style="opacity:1; font-family:'Libre Baskerville',serif;">Pitchfork Selects</p>
+  <p class="error-msg" id="error-msg"></p>
+</div>
+
+<header id="main-header" style="display:none;">
+  <span class="logo">Pitchfork Selects — Artwork Archive</span>
+  <span class="counter" id="counter"></span>
+</header>
+
+<div class="feed" id="feed"></div>
+
+<nav id="main-nav" style="display:none;">
+  <button class="nav-btn" id="btn-prev" onclick="navigate(-1)" disabled>←</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next" onclick="navigate(1)">→</button>
+</nav>
+
+<div class="keyboard-hint" id="keyboard-hint" style="display:none;">← → to navigate</div>
+
+<script>
+const CLIENT_ID     = '095aac83519d4b01ba2bc74fefb3d68f';
+const CLIENT_SECRET = '451719c1d1f8469da142e966e5a47386';
+const PLAYLIST_ID   = '7f9o34JAe8ZSRq4GX7f0Ol';
+const START_DATE    = new Date('2025-01-01');
+
+let tracks  = [];
+let current = 0;
+
+async function getToken() {
+  const cached = localStorage.getItem('sp_cc_token');
+  const exp    = parseInt(localStorage.getItem('sp_cc_exp') || '0');
+  if (cached && Date.now() < exp) return cached;
+
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET)
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
+  localStorage.setItem('sp_cc_token', data.access_token);
+  localStorage.setItem('sp_cc_exp', Date.now() + (data.expires_in - 60) * 1000);
+  return data.access_token;
+}
+
+async function fetchPlaylist(token) {
+  let all = [];
+  let url = `https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/tracks?limit=50`;
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Playlist error ' + res.status);
+    const data = await res.json();
+    all = all.concat(data.items.filter(i => i.track && i.added_at));
+    url = data.next;
+  }
+  return all.filter(i => new Date(i.added_at) >= START_DATE);
+}
+
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildCard(item, index) {
+  const { track, added_at } = item;
+  const album  = track.album;
+  const artist = track.artists.map(a => a.name).join(', ');
+  const image  = album.images[0]?.url;
+  const year   = album.release_date?.slice(0, 4) || '';
+  const week   = new Date(added_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  const coverHTML = image
+    ? `<img class="cover" src="${esc(image)}" alt="${esc(album.name)}">`
+    : `<div class="cover-placeholder">NO ARTWORK</div>`;
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.index = index;
+  card.innerHTML = `
+    <div class="card-inner">
+      <div>${coverHTML}</div>
+      <div class="info">
+        <div class="date-label">Added ${week}</div>
+        <h2 class="track-title">${esc(track.name)}</h2>
+        <p class="track-artist">${esc(artist)}</p>
+        <span class="source-tag">Pitchfork Selects</span>
+        <p class="album-name">${esc(album.name)}</p>
+        <p class="release-year">${year}</p>
+      </div>
+    </div>`;
+  return card;
+}
+
+function renderDots() {
+  const dots = document.getElementById('nav-dots');
+  dots.innerHTML = '';
+  const max = Math.min(tracks.length, 12);
+  for (let i = 0; i < max; i++) {
+    const d = document.createElement('span');
+    d.className = 'dot' + (i === current ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dots.appendChild(d);
+  }
+}
+
+function updateNav() {
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === tracks.length - 1;
+  document.getElementById('counter').textContent = `${current + 1} / ${tracks.length}`;
+  renderDots();
+}
+
+function goTo(index) {
+  const feed  = document.getElementById('feed');
+  const cards = feed.querySelectorAll('.card');
+  if (cards[current]) cards[current].classList.remove('active');
+  current = index;
+  if (cards[current]) cards[current].classList.add('active');
+  updateNav();
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next < 0 || next >= tracks.length) return;
+  goTo(next);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') navigate(1);
+  if (e.key === 'ArrowLeft')  navigate(-1);
+});
+
+async function init() {
+  try {
+    const token = await getToken();
+    const items = await fetchPlaylist(token);
+    tracks = items.reverse();
+
+    const feed = document.getElementById('feed');
+    tracks.forEach((item, i) => feed.appendChild(buildCard(item, i)));
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('main-header').style.display    = 'flex';
+    document.getElementById('main-nav').style.display       = 'flex';
+    document.getElementById('keyboard-hint').style.display  = 'block';
+    goTo(0);
+
+  } catch (e) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('error-screen').style.display   = 'flex';
+    document.getElementById('error-msg').textContent        = e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
