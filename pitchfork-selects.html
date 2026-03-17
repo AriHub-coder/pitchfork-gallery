@@ -103,7 +103,7 @@ async function startAuth() {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
-    scope: 'user-read-private',
+    scope: 'playlist-read-private playlist-read-collaborative',
     redirect_uri: REDIRECT_URI,
     code_challenge_method: 'S256',
     code_challenge: challenge
