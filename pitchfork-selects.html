@@ -7,262 +7,58 @@
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #0e0e0e;
-    --fg: #f0ede6;
-    --muted: #5a5a5a;
-    --accent: #c8f050;
+    --bg: #0e0e0e; --fg: #f0ede6; --muted: #5a5a5a; --accent: #c8f050;
     --font-serif: 'Libre Baskerville', Georgia, serif;
     --font-mono: 'DM Mono', monospace;
   }
-
-  html, body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--font-mono);
-    height: 100%;
-    overflow: hidden;
-  }
-
-  header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 32px;
-  }
-
-  .logo {
-    font-family: var(--font-serif);
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    color: var(--fg);
-    opacity: 0.5;
-  }
-
-  .counter {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-
-  .feed {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .card {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-  }
-
-  .card.active {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .card-inner {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 52px;
-    align-items: end;
-    max-width: 920px;
-    width: 100%;
-    padding: 80px 32px;
-  }
-
-  .cover {
-    width: clamp(260px, 36vw, 440px);
-    height: clamp(260px, 36vw, 440px);
-    object-fit: cover;
-    display: block;
-    box-shadow: 0 40px 100px rgba(0,0,0,0.8);
-  }
-
-  .cover-placeholder {
-    width: clamp(260px, 36vw, 440px);
-    height: clamp(260px, 36vw, 440px);
-    background: #1a1a1a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-  }
-
+  html, body { background: var(--bg); color: var(--fg); font-family: var(--font-mono); height: 100%; overflow: hidden; }
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; }
+  .logo { font-family: var(--font-serif); font-size: 13px; letter-spacing: 0.04em; color: var(--fg); opacity: 0.5; }
+  .counter { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+  .feed { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .card.active { opacity: 1; pointer-events: all; }
+  .card-inner { display: grid; grid-template-columns: auto 1fr; gap: 52px; align-items: end; max-width: 920px; width: 100%; padding: 80px 32px; }
+  .cover { width: clamp(260px, 36vw, 440px); height: clamp(260px, 36vw, 440px); object-fit: cover; display: block; box-shadow: 0 40px 100px rgba(0,0,0,0.8); }
+  .cover-placeholder { width: clamp(260px, 36vw, 440px); height: clamp(260px, 36vw, 440px); background: #1a1a1a; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px; letter-spacing: 0.1em; }
   .info { padding-bottom: 8px; }
-
-  .date-label {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 20px;
-  }
-
-  .track-title {
-    font-family: var(--font-serif);
-    font-size: clamp(20px, 2.8vw, 34px);
-    line-height: 1.15;
-    font-weight: normal;
-    margin-bottom: 6px;
-    color: var(--fg);
-  }
-
-  .track-artist {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: clamp(15px, 1.8vw, 21px);
-    color: var(--fg);
-    opacity: 0.6;
-    margin-bottom: 28px;
-  }
-
-  .source-tag {
-    display: inline-block;
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    margin-bottom: 28px;
-  }
-
-  .album-name {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .release-year {
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  nav {
-    position: fixed;
-    bottom: 32px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    z-index: 100;
-  }
-
-  .nav-btn {
-    background: none;
-    border: 1px solid #2a2a2a;
-    color: var(--fg);
-    width: 44px;
-    height: 44px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.2s;
-    font-size: 16px;
-  }
-
+  .date-label { font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 20px; }
+  .track-title { font-family: var(--font-serif); font-size: clamp(20px, 2.8vw, 34px); line-height: 1.15; font-weight: normal; margin-bottom: 6px; color: var(--fg); }
+  .track-artist { font-family: var(--font-serif); font-style: italic; font-size: clamp(15px, 1.8vw, 21px); color: var(--fg); opacity: 0.6; margin-bottom: 28px; }
+  .source-tag { display: inline-block; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--accent); color: var(--accent); margin-bottom: 28px; }
+  .album-name { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .release-year { font-size: 11px; color: var(--muted); }
+  nav { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; align-items: center; z-index: 100; }
+  .nav-btn { background: none; border: 1px solid #2a2a2a; color: var(--fg); width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s; font-size: 16px; }
   .nav-btn:hover { border-color: var(--accent); }
   .nav-btn:disabled { opacity: 0.2; cursor: default; }
-
-  .nav-dots {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--muted);
-    cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
-  }
-
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); cursor: pointer; transition: background 0.2s, transform 0.2s; }
   .dot.active { background: var(--accent); transform: scale(1.5); }
-
-  #loading-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 150;
-  }
-
-  .loading-text {
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-  }
-
-  #error-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 16px;
-    z-index: 150;
-  }
-
-  .error-msg {
-    font-size: 12px;
-    color: #c05050;
-    text-align: center;
-    max-width: 360px;
-    line-height: 1.7;
-    font-family: var(--font-mono);
-  }
-
-  .keyboard-hint {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    font-size: 9px;
-    color: #2a2a2a;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
+  #auth-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px; z-index: 200; }
+  #auth-screen h1 { font-family: var(--font-serif); font-weight: normal; font-size: 28px; }
+  #auth-screen p { font-size: 12px; color: var(--muted); max-width: 360px; text-align: center; line-height: 1.7; }
+  .btn-connect { background: var(--accent); color: #0e0e0e; border: none; padding: 12px 32px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; }
+  .btn-connect:hover { opacity: 0.85; }
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 150; }
+  .loading-text { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .error-msg { font-size: 11px; color: #c05050; text-align: center; max-width: 340px; line-height: 1.6; }
+  .keyboard-hint { position: fixed; bottom: 32px; right: 32px; font-size: 9px; color: #2a2a2a; letter-spacing: 0.1em; text-transform: uppercase; }
 </style>
 </head>
 <body>
 
-<div id="loading-screen">
-  <p class="loading-text">Loading artwork archive...</p>
+<div id="auth-screen">
+  <h1>Pitchfork Selects</h1>
+  <p>Artwork archive — covers, artists, creative credits.</p>
+  <button class="btn-connect" onclick="startAuth()">Connect Spotify</button>
+  <p id="auth-error" class="error-msg" style="display:none;"></p>
 </div>
 
-<div id="error-screen">
-  <p class="logo" style="opacity:1; font-family:'Libre Baskerville',serif;">Pitchfork Selects</p>
-  <p class="error-msg" id="error-msg"></p>
+<div id="loading-screen">
+  <p class="loading-text">Loading artwork archive...</p>
 </div>
 
 <header id="main-header" style="display:none;">
@@ -281,37 +77,62 @@
 <div class="keyboard-hint" id="keyboard-hint" style="display:none;">← → to navigate</div>
 
 <script>
-const CLIENT_ID     = '095aac83519d4b01ba2bc74fefb3d68f';
-const CLIENT_SECRET = '451719c1d1f8469da142e966e5a47386';
-const PLAYLIST_ID   = '7f9o34JAe8ZSRq4GX7f0Ol';
-const START_DATE    = new Date('2025-01-01');
+const CLIENT_ID    = '095aac83519d4b01ba2bc74fefb3d68f';
+const REDIRECT_URI = 'https://arihub-coder.github.io/pitchfork-gallery/pitchfork-selects.html';
+const PLAYLIST_ID  = '7f9o34JAe8ZSRq4GX7f0Ol';
+const START_DATE   = new Date('2025-01-01');
 
-let tracks  = [];
-let current = 0;
+let tracks = [], current = 0;
 
-async function getToken() {
-  const cached = localStorage.getItem('sp_cc_token');
-  const exp    = parseInt(localStorage.getItem('sp_cc_exp') || '0');
-  if (cached && Date.now() < exp) return cached;
+function generateVerifier() {
+  const arr = new Uint8Array(64);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
 
+async function generateChallenge(verifier) {
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function startAuth() {
+  const verifier = generateVerifier();
+  const challenge = await generateChallenge(verifier);
+  localStorage.setItem('sp_verifier', verifier);
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: CLIENT_ID,
+    scope: 'user-read-private',
+    redirect_uri: REDIRECT_URI,
+    code_challenge_method: 'S256',
+    code_challenge: challenge
+  });
+  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
+
+async function exchangeCode(code) {
+  const verifier = localStorage.getItem('sp_verifier');
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET)
-    },
-    body: 'grant_type=client_credentials'
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      client_id: CLIENT_ID,
+      code_verifier: verifier
+    })
   });
   const data = await res.json();
-  if (!data.access_token) throw new Error('Token error: ' + JSON.stringify(data));
-  localStorage.setItem('sp_cc_token', data.access_token);
-  localStorage.setItem('sp_cc_exp', Date.now() + (data.expires_in - 60) * 1000);
+  if (!data.access_token) throw new Error(data.error_description || JSON.stringify(data));
+  localStorage.setItem('sp_token', data.access_token);
+  if (data.refresh_token) localStorage.setItem('sp_refresh', data.refresh_token);
   return data.access_token;
 }
 
 async function fetchPlaylist(token) {
-  let all = [];
-  let url = `https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/tracks?limit=50`;
+  let all = [], url = `https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/tracks?limit=50`;
   while (url) {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Playlist error ' + res.status);
@@ -322,37 +143,20 @@ async function fetchPlaylist(token) {
   return all.filter(i => new Date(i.added_at) >= START_DATE);
 }
 
-function esc(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function buildCard(item, index) {
   const { track, added_at } = item;
   const album  = track.album;
   const artist = track.artists.map(a => a.name).join(', ');
   const image  = album.images[0]?.url;
-  const year   = album.release_date?.slice(0, 4) || '';
-  const week   = new Date(added_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-  const coverHTML = image
-    ? `<img class="cover" src="${esc(image)}" alt="${esc(album.name)}">`
-    : `<div class="cover-placeholder">NO ARTWORK</div>`;
-
+  const year   = album.release_date?.slice(0,4) || '';
+  const week   = new Date(added_at).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+  const coverHTML = image ? `<img class="cover" src="${esc(image)}" alt="${esc(album.name)}">` : `<div class="cover-placeholder">NO ARTWORK</div>`;
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.index = index;
-  card.innerHTML = `
-    <div class="card-inner">
-      <div>${coverHTML}</div>
-      <div class="info">
-        <div class="date-label">Added ${week}</div>
-        <h2 class="track-title">${esc(track.name)}</h2>
-        <p class="track-artist">${esc(artist)}</p>
-        <span class="source-tag">Pitchfork Selects</span>
-        <p class="album-name">${esc(album.name)}</p>
-        <p class="release-year">${year}</p>
-      </div>
-    </div>`;
+  card.innerHTML = `<div class="card-inner"><div>${coverHTML}</div><div class="info"><div class="date-label">Added ${week}</div><h2 class="track-title">${esc(track.name)}</h2><p class="track-artist">${esc(artist)}</p><span class="source-tag">Pitchfork Selects</span><p class="album-name">${esc(album.name)}</p><p class="release-year">${year}</p></div></div>`;
   return card;
 }
 
@@ -376,8 +180,7 @@ function updateNav() {
 }
 
 function goTo(index) {
-  const feed  = document.getElementById('feed');
-  const cards = feed.querySelectorAll('.card');
+  const cards = document.getElementById('feed').querySelectorAll('.card');
   if (cards[current]) cards[current].classList.remove('active');
   current = index;
   if (cards[current]) cards[current].classList.add('active');
@@ -386,38 +189,54 @@ function goTo(index) {
 
 function navigate(dir) {
   const next = current + dir;
-  if (next < 0 || next >= tracks.length) return;
-  goTo(next);
+  if (next >= 0 && next < tracks.length) goTo(next);
 }
 
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') navigate(1);
-  if (e.key === 'ArrowLeft')  navigate(-1);
+  if (e.key === 'ArrowLeft') navigate(-1);
 });
 
-async function init() {
+async function init(token) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
   try {
-    const token = await getToken();
     const items = await fetchPlaylist(token);
     tracks = items.reverse();
-
     const feed = document.getElementById('feed');
     tracks.forEach((item, i) => feed.appendChild(buildCard(item, i)));
-
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('main-header').style.display    = 'flex';
-    document.getElementById('main-nav').style.display       = 'flex';
-    document.getElementById('keyboard-hint').style.display  = 'block';
+    document.getElementById('main-header').style.display = 'flex';
+    document.getElementById('main-nav').style.display = 'flex';
+    document.getElementById('keyboard-hint').style.display = 'block';
     goTo(0);
-
-  } catch (e) {
+  } catch(e) {
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('error-screen').style.display   = 'flex';
-    document.getElementById('error-msg').textContent        = e.message;
+    document.getElementById('auth-screen').style.display = 'flex';
+    const err = document.getElementById('auth-error');
+    err.style.display = 'block';
+    err.textContent = e.message;
   }
 }
 
-init();
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (code) {
+    window.history.replaceState({}, '', window.location.pathname);
+    try {
+      const token = await exchangeCode(code);
+      init(token);
+    } catch(e) {
+      const err = document.getElementById('auth-error');
+      err.style.display = 'block';
+      err.textContent = 'Auth error: ' + e.message;
+    }
+  } else {
+    const stored = localStorage.getItem('sp_token');
+    if (stored) { init(stored); }
+  }
+})();
 </script>
 </body>
 </html>
