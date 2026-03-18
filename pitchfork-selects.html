@@ -36,29 +36,23 @@
   .nav-dots { display: flex; gap: 6px; align-items: center; }
   .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); cursor: pointer; transition: background 0.2s, transform 0.2s; }
   .dot.active { background: var(--accent); transform: scale(1.5); }
-  #auth-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px; z-index: 200; }
-  #auth-screen h1 { font-family: var(--font-serif); font-weight: normal; font-size: 28px; }
-  #auth-screen p { font-size: 12px; color: var(--muted); max-width: 360px; text-align: center; line-height: 1.7; }
-  .btn-connect { background: var(--accent); color: #0e0e0e; border: none; padding: 12px 32px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; }
-  .btn-connect:hover { opacity: 0.85; }
-  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 150; }
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 150; flex-direction: column; gap: 12px; }
   .loading-text { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-  .error-msg { font-size: 11px; color: #c05050; text-align: center; max-width: 340px; line-height: 1.6; }
+  #error-screen { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 150; }
+  .error-msg { font-size: 12px; color: #c05050; text-align: center; max-width: 360px; line-height: 1.7; font-family: var(--font-mono); }
   .keyboard-hint { position: fixed; bottom: 32px; right: 32px; font-size: 9px; color: #2a2a2a; letter-spacing: 0.1em; text-transform: uppercase; }
 </style>
 </head>
 <body>
 
-<div id="auth-screen">
-  <h1>Pitchfork Selects</h1>
-  <p>Connect once — the app remembers you forever.</p>
-  <button class="btn-connect" onclick="startAuth()">Connect Spotify</button>
-  <p id="auth-error" class="error-msg" style="display:none;"></p>
-</div>
-
 <div id="loading-screen">
   <p class="loading-text">Loading artwork archive...</p>
+</div>
+
+<div id="error-screen">
+  <p style="font-family:'Libre Baskerville',serif;font-size:20px;margin-bottom:8px;">Pitchfork Selects</p>
+  <p class="error-msg" id="error-msg"></p>
 </div>
 
 <header id="main-header" style="display:none;">
@@ -77,107 +71,62 @@
 <div class="keyboard-hint" id="keyboard-hint" style="display:none;">← → to navigate</div>
 
 <script>
-const CLIENT_ID    = '095aac83519d4b01ba2bc74fefb3d68f';
-const REDIRECT_URI = 'http://127.0.0.1:5500/pitchfork-selects.html';
-const PLAYLIST_ID  = '7f9o34JAe8ZSRq4GX7f0Ol';
-const START_DATE   = new Date('2025-01-01');
-
 let tracks = [], current = 0;
 
-function generateVerifier() {
-  const arr = new Uint8Array(64);
-  crypto.getRandomValues(arr);
-  return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-
-async function generateChallenge(v) {
-  const d = new TextEncoder().encode(v);
-  const h = await crypto.subtle.digest('SHA-256', d);
-  return btoa(String.fromCharCode(...new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-
-async function startAuth() {
-  const verifier = generateVerifier();
-  const challenge = await generateChallenge(verifier);
-  localStorage.setItem('sp_verifier', verifier);
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: CLIENT_ID,
-    scope: 'playlist-read-private user-follow-read',
-    redirect_uri: REDIRECT_URI,
-    code_challenge_method: 'S256',
-    code_challenge: challenge
-  });
-  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
-}
-
-async function exchangeCode(code) {
-  const verifier = localStorage.getItem('sp_verifier');
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code, redirect_uri: REDIRECT_URI,
-      client_id: CLIENT_ID, code_verifier: verifier
-    })
-  });
+// Fetch Pitchfork Selects page via CORS proxy
+async function fetchPitchforkTracks() {
+  const url = 'https://pitchfork.com/tags/pitchfork-selects/';
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxy);
+  if (!res.ok) throw new Error('Could not load Pitchfork page');
   const data = await res.json();
-  if (!data.access_token) throw new Error(data.error_description || JSON.stringify(data));
-  saveToken(data);
-  return data.access_token;
+  return parseTracks(data.contents);
 }
 
-async function doRefresh() {
-  const refresh = localStorage.getItem('sp_refresh');
-  if (!refresh) throw new Error('no refresh token');
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, client_id: CLIENT_ID })
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('refresh failed');
-  saveToken(data);
-  return data.access_token;
-}
+// Parse tracks from HTML — format: "Artist: "Song""
+function parseTracks(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const tracks = [];
 
-function saveToken(data) {
-  localStorage.setItem('sp_token', data.access_token);
-  localStorage.setItem('sp_exp', Date.now() + (data.expires_in - 60) * 1000);
-  if (data.refresh_token) localStorage.setItem('sp_refresh', data.refresh_token);
-}
+  // Find all text nodes matching "Artist: "Song"" pattern
+  const allText = doc.body.innerText || doc.body.textContent;
+  const lines = allText.split('\n').map(l => l.trim()).filter(Boolean);
 
-async function getToken() {
-  const token = localStorage.getItem('sp_token');
-  const exp   = parseInt(localStorage.getItem('sp_exp') || '0');
-  if (token && Date.now() < exp) return token;
-  return await doRefresh();
-}
-
-async function fetchPlaylist(token) {
-  let all = [], url = `https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/tracks?limit=50`;
-  while (url) {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Playlist error ' + res.status);
-    const data = await res.json();
-    all = all.concat(data.items.filter(i => i.track && i.added_at));
-    url = data.next;
+  for (const line of lines) {
+    // Match: Artist: "Song" or Artist: "Song"
+    const match = line.match(/^(.+?):\s*["""](.+?)["""]/);
+    if (match) {
+      tracks.push({ artist: match[1].trim(), title: match[2].trim() });
+    }
   }
-  return all.filter(i => new Date(i.added_at) >= START_DATE);
+  return tracks;
+}
+
+// Fetch artwork from iTunes Search API — fully open, no auth
+async function fetchArtwork(artist, title) {
+  try {
+    const q = encodeURIComponent(artist + ' ' + title);
+    const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=3`);
+    const data = await res.json();
+    const match = data.results?.[0];
+    if (!match) return null;
+    return {
+      image: match.artworkUrl100.replace('100x100bb', '600x600bb'),
+      album: match.collectionName,
+      year: match.releaseDate?.slice(0, 4) || ''
+    };
+  } catch { return null; }
 }
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function buildCard(item, index) {
-  const { track, added_at } = item;
-  const album  = track.album;
-  const artist = track.artists.map(a => a.name).join(', ');
-  const image  = album.images[0]?.url;
-  const year   = album.release_date?.slice(0,4) || '';
-  const week   = new Date(added_at).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+function buildCard(track, index, artwork) {
+  const image = artwork?.image;
+  const album = artwork?.album || '';
+  const year  = artwork?.year || '';
   const coverHTML = image
-    ? `<img class="cover" src="${esc(image)}" alt="${esc(album.name)}">`
+    ? `<img class="cover" src="${esc(image)}" alt="${esc(album)}">`
     : `<div class="cover-placeholder">NO ARTWORK</div>`;
   const card = document.createElement('div');
   card.className = 'card';
@@ -186,11 +135,10 @@ function buildCard(item, index) {
     <div class="card-inner">
       <div>${coverHTML}</div>
       <div class="info">
-        <div class="date-label">Added ${week}</div>
-        <h2 class="track-title">${esc(track.name)}</h2>
-        <p class="track-artist">${esc(artist)}</p>
+        <h2 class="track-title">${esc(track.title)}</h2>
+        <p class="track-artist">${esc(track.artist)}</p>
         <span class="source-tag">Pitchfork Selects</span>
-        <p class="album-name">${esc(album.name)}</p>
+        <p class="album-name">${esc(album)}</p>
         <p class="release-year">${year}</p>
       </div>
     </div>`;
@@ -234,50 +182,39 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') navigate(-1);
 });
 
-async function init(token) {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('loading-screen').style.display = 'flex';
+async function init() {
   try {
-    const items = await fetchPlaylist(token);
-    tracks = items.reverse();
+    const parsed = await fetchPitchforkTracks();
+    if (!parsed.length) throw new Error('No tracks found');
+    tracks = parsed;
+
     const feed = document.getElementById('feed');
-    tracks.forEach((item, i) => feed.appendChild(buildCard(item, i)));
+    tracks.forEach((t, i) => feed.appendChild(buildCard(t, i, null)));
+
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('main-header').style.display = 'flex';
     document.getElementById('main-nav').style.display = 'flex';
     document.getElementById('keyboard-hint').style.display = 'block';
     goTo(0);
+
+    // Fetch artwork progressively
+    for (let i = 0; i < tracks.length; i++) {
+      const art = await fetchArtwork(tracks[i].artist, tracks[i].title);
+      if (art) {
+        const old = feed.querySelector(`.card[data-index="${i}"]`);
+        const updated = buildCard(tracks[i], i, art);
+        if (i === current) updated.classList.add('active');
+        feed.replaceChild(updated, old);
+      }
+    }
   } catch(e) {
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'flex';
-    const err = document.getElementById('auth-error');
-    err.style.display = 'block';
-    err.textContent = e.message;
+    document.getElementById('error-screen').style.display = 'flex';
+    document.getElementById('error-msg').textContent = e.message;
   }
 }
 
-(async () => {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  if (code) {
-    window.history.replaceState({}, '', window.location.pathname);
-    try {
-      const token = await exchangeCode(code);
-      init(token);
-    } catch(e) {
-      const err = document.getElementById('auth-error');
-      err.style.display = 'block';
-      err.textContent = 'Auth error: ' + e.message;
-    }
-    return;
-  }
-  try {
-    const token = await getToken();
-    init(token);
-  } catch(e) {
-    // show login screen
-  }
-})();
+init();
 </script>
 </body>
 </html>
