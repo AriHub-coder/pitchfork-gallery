@@ -23,6 +23,7 @@
   .cover { width: clamp(260px, 36vw, 440px); height: clamp(260px, 36vw, 440px); object-fit: cover; display: block; box-shadow: 0 40px 100px rgba(0,0,0,0.8); }
   .cover-placeholder { width: clamp(260px, 36vw, 440px); height: clamp(260px, 36vw, 440px); background: #1a1a1a; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px; letter-spacing: 0.1em; }
   .info { padding-bottom: 8px; }
+  .date-label { font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 20px; }
   .track-title { font-family: var(--font-serif); font-size: clamp(20px, 2.8vw, 34px); line-height: 1.15; font-weight: normal; margin-bottom: 6px; color: var(--fg); }
   .track-artist { font-family: var(--font-serif); font-style: italic; font-size: clamp(15px, 1.8vw, 21px); color: var(--fg); opacity: 0.6; margin-bottom: 28px; }
   .source-tag { display: inline-block; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--accent); color: var(--accent); margin-bottom: 28px; }
@@ -40,7 +41,7 @@
   #auth-screen p { font-size: 12px; color: var(--muted); max-width: 360px; text-align: center; line-height: 1.7; }
   .btn-connect { background: var(--accent); color: #0e0e0e; border: none; padding: 12px 32px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; }
   .btn-connect:hover { opacity: 0.85; }
-  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 150; flex-direction: column; gap: 12px; }
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 150; }
   .loading-text { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
   .error-msg { font-size: 11px; color: #c05050; text-align: center; max-width: 340px; line-height: 1.6; }
@@ -51,7 +52,7 @@
 
 <div id="auth-screen">
   <h1>Pitchfork Selects</h1>
-  <p>Connect Spotify once — the app will remember you.</p>
+  <p>Connect once — the app remembers you forever.</p>
   <button class="btn-connect" onclick="startAuth()">Connect Spotify</button>
   <p id="auth-error" class="error-msg" style="display:none;"></p>
 </div>
@@ -77,23 +78,24 @@
 
 <script>
 const CLIENT_ID    = '095aac83519d4b01ba2bc74fefb3d68f';
-const REDIRECT_URI = 'https://arihub-coder.github.io/pitchfork-gallery/pitchfork-selects.html';
-const PFORK_ID     = '7f9o34JAe8ZSRq4GX7f0Ol';
+const REDIRECT_URI = 'http://127.0.0.1:5500/pitchfork-selects.html';
+const PLAYLIST_ID  = '7f9o34JAe8ZSRq4GX7f0Ol';
 const START_DATE   = new Date('2025-01-01');
 
 let tracks = [], current = 0;
 
-// ── PKCE AUTH ─────────────────────────────────────────
 function generateVerifier() {
   const arr = new Uint8Array(64);
   crypto.getRandomValues(arr);
   return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
+
 async function generateChallenge(v) {
   const d = new TextEncoder().encode(v);
   const h = await crypto.subtle.digest('SHA-256', d);
   return btoa(String.fromCharCode(...new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
+
 async function startAuth() {
   const verifier = generateVerifier();
   const challenge = await generateChallenge(verifier);
@@ -101,13 +103,14 @@ async function startAuth() {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
-    scope: 'user-library-read playlist-read-private',
+    scope: 'playlist-read-private user-follow-read',
     redirect_uri: REDIRECT_URI,
     code_challenge_method: 'S256',
     code_challenge: challenge
   });
   window.location.href = 'https://accounts.spotify.com/authorize?' + params;
 }
+
 async function exchangeCode(code) {
   const verifier = localStorage.getItem('sp_verifier');
   const res = await fetch('https://accounts.spotify.com/api/token', {
@@ -121,35 +124,39 @@ async function exchangeCode(code) {
   });
   const data = await res.json();
   if (!data.access_token) throw new Error(data.error_description || JSON.stringify(data));
-  localStorage.setItem('sp_token', data.access_token);
-  localStorage.setItem('sp_token_exp', Date.now() + (data.expires_in - 60) * 1000);
-  if (data.refresh_token) localStorage.setItem('sp_refresh', data.refresh_token);
+  saveToken(data);
   return data.access_token;
 }
-async function refreshToken() {
+
+async function doRefresh() {
   const refresh = localStorage.getItem('sp_refresh');
-  if (!refresh) throw new Error('No refresh token');
+  if (!refresh) throw new Error('no refresh token');
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, client_id: CLIENT_ID })
   });
   const data = await res.json();
-  if (!data.access_token) throw new Error('Refresh failed');
-  localStorage.setItem('sp_token', data.access_token);
-  localStorage.setItem('sp_token_exp', Date.now() + (data.expires_in - 60) * 1000);
+  if (!data.access_token) throw new Error('refresh failed');
+  saveToken(data);
   return data.access_token;
 }
-async function getToken() {
-  const token = localStorage.getItem('sp_token');
-  const exp   = parseInt(localStorage.getItem('sp_token_exp') || '0');
-  if (token && Date.now() < exp) return token;
-  return await refreshToken();
+
+function saveToken(data) {
+  localStorage.setItem('sp_token', data.access_token);
+  localStorage.setItem('sp_exp', Date.now() + (data.expires_in - 60) * 1000);
+  if (data.refresh_token) localStorage.setItem('sp_refresh', data.refresh_token);
 }
 
-// ── SPOTIFY ───────────────────────────────────────────
+async function getToken() {
+  const token = localStorage.getItem('sp_token');
+  const exp   = parseInt(localStorage.getItem('sp_exp') || '0');
+  if (token && Date.now() < exp) return token;
+  return await doRefresh();
+}
+
 async function fetchPlaylist(token) {
-  let all = [], url = `https://api.spotify.com/v1/playlists/${PFORK_ID}/tracks?limit=50`;
+  let all = [], url = `https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/tracks?limit=50`;
   while (url) {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Playlist error ' + res.status);
@@ -160,7 +167,6 @@ async function fetchPlaylist(token) {
   return all.filter(i => new Date(i.added_at) >= START_DATE);
 }
 
-// ── RENDER ────────────────────────────────────────────
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function buildCard(item, index) {
@@ -180,7 +186,7 @@ function buildCard(item, index) {
     <div class="card-inner">
       <div>${coverHTML}</div>
       <div class="info">
-        <div style="font-size:10px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:20px;">Added ${week}</div>
+        <div class="date-label">Added ${week}</div>
         <h2 class="track-title">${esc(track.name)}</h2>
         <p class="track-artist">${esc(artist)}</p>
         <span class="source-tag">Pitchfork Selects</span>
@@ -202,12 +208,14 @@ function renderDots() {
     dots.appendChild(d);
   }
 }
+
 function updateNav() {
   document.getElementById('btn-prev').disabled = current === 0;
   document.getElementById('btn-next').disabled = current === tracks.length - 1;
   document.getElementById('counter').textContent = `${current + 1} / ${tracks.length}`;
   renderDots();
 }
+
 function goTo(index) {
   const cards = document.getElementById('feed').querySelectorAll('.card');
   if (cards[current]) cards[current].classList.remove('active');
@@ -215,10 +223,12 @@ function goTo(index) {
   if (cards[current]) cards[current].classList.add('active');
   updateNav();
 }
+
 function navigate(dir) {
   const next = current + dir;
   if (next >= 0 && next < tracks.length) goTo(next);
 }
+
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') navigate(1);
   if (e.key === 'ArrowLeft') navigate(-1);
@@ -246,7 +256,6 @@ async function init(token) {
   }
 }
 
-// ── BOOT ──────────────────────────────────────────────
 (async () => {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
@@ -264,10 +273,9 @@ async function init(token) {
   }
   try {
     const token = await getToken();
-    document.getElementById('auth-screen').style.display = 'none';
     init(token);
   } catch(e) {
-    // Show login screen
+    // show login screen
   }
 })();
 </script>
