@@ -73,31 +73,42 @@
 <script>
 let tracks = [], current = 0;
 
-// Fetch Pitchfork Selects page via CORS proxy
 async function fetchPitchforkTracks() {
-  const url = 'https://pitchfork.com/tags/pitchfork-selects/';
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxy);
-  if (!res.ok) throw new Error('Could not load Pitchfork page');
-  const data = await res.json();
-  return parseTracks(data.contents);
+  const parser = new DOMParser();
+  
+  // Step 1: load tags page to find latest article
+  const tagsUrl = 'https://pitchfork.com/tags/pitchfork-selects/';
+  const r1 = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(tagsUrl));
+  if (!r1.ok) throw new Error('Could not load Pitchfork page');
+  const d1 = await r1.json();
+  const doc1 = parser.parseFromString(d1.contents, 'text/html');
+
+  // Step 2: find latest article link
+  const links = Array.from(doc1.querySelectorAll('a[href]'))
+    .map(a => a.getAttribute('href'))
+    .filter(h => h && h.match(/\/pitchfork-selects\/\d/));
+
+  if (!links.length) throw new Error('No articles found');
+
+  const articleUrl = links[0].startsWith('http') ? links[0] : 'https://pitchfork.com' + links[0];
+
+  // Step 3: load article and parse tracks
+  const r2 = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(articleUrl));
+  if (!r2.ok) throw new Error('Could not load article');
+  const d2 = await r2.json();
+  const doc2 = parser.parseFromString(d2.contents, 'text/html');
+
+  return parseTracks(doc2);
 }
 
-// Parse tracks from HTML — format: "Artist: "Song""
-function parseTracks(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+function parseTracks(doc) {
   const tracks = [];
-
-  // Find all text nodes matching "Artist: "Song"" pattern
-  const allText = doc.body.innerText || doc.body.textContent;
-  const lines = allText.split('\n').map(l => l.trim()).filter(Boolean);
-
+  const text = doc.body.innerText || doc.body.textContent || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   for (const line of lines) {
-    // Match: Artist: "Song" or Artist: "Song"
-    const match = line.match(/^(.+?):\s*["""](.+?)["""]/);
-    if (match) {
-      tracks.push({ artist: match[1].trim(), title: match[2].trim() });
+    const m = line.match(/^([^:]{2,50}):\s*[\u201c"\u201d]([^\u201c"\u201d]{2,80})[\u201c"\u201d]/);
+    if (m && !m[1].includes('http') && !m[1].toLowerCase().includes('pitchfork')) {
+      tracks.push({ artist: m[1].trim(), title: m[2].trim() });
     }
   }
   return tracks;
