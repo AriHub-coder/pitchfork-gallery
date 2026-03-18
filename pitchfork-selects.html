@@ -86,9 +86,10 @@ async function fetchPitchforkTracks() {
   // Step 2: find latest article link
   const links = Array.from(doc1.querySelectorAll('a[href]'))
     .map(a => a.getAttribute('href'))
-    .filter(h => h && h.match(/\/pitchfork-selects\/\d/));
+    .filter(h => h && (h.includes('pitchfork-selects') || h.includes('songs-you-should-listen')));
 
-  if (!links.length) throw new Error('No articles found');
+  console.log('All links found:', links.slice(0, 10));
+  if (!links.length) throw new Error('No articles found. Check console for link structure.');
 
   const articleUrl = links[0].startsWith('http') ? links[0] : 'https://pitchfork.com' + links[0];
 
